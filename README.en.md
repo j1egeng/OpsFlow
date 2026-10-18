@@ -49,7 +49,7 @@ Reviewing requires the `APPROVER` role; being an administrator alone does not gr
 Deployment request path: `Browser (127.0.0.1:8088) → Nginx → Spring Boot (internal port 8080) → PostgreSQL (internal port 5432)`.
 
 ```text
-Architechitecting_Software_Solutions/
+OpsFlow/
   README.md                 Chinese project guide
   README.en.md              English project guide
   compose.yaml              Frontend, backend, and database services
@@ -86,10 +86,11 @@ These are results of that acceptance run, not a live status report. Local eviden
 
 ### 3.3 First build or deployment on another computer
 
-Run PowerShell from the project root. This computer is already deployed; use section 4 for everyday operation.
+These commands use Windows PowerShell. Git is required to clone the repository. For a first deployment, run every command in order; use section 4 for everyday operation of an existing deployment.
 
 ```powershell
-Set-Location 'E:\study flies\teamProject\Architechitecting_Software_Solutions'
+git clone https://github.com/j1egeng/OpsFlow.git
+cd OpsFlow
 docker version
 .\deploy\Initialize-Docker.ps1
 docker compose --env-file .env.docker -f compose.yaml config --quiet
@@ -98,7 +99,9 @@ docker compose --env-file .env.docker -f compose.yaml ps
 Invoke-RestMethod 'http://127.0.0.1:8088/actuator/health'
 ```
 
-Adjust the project path on another computer. If Docker is absent from PATH on this machine, invoke `C:\Users\26514\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe` by its absolute path.
+If the repository is already cloned, enter its `OpsFlow` root directory on your computer and skip `git clone`. If Docker is absent from PATH, invoke `docker.exe` from your own Docker installation directory by its absolute path.
+
+On macOS/Linux, you can install PowerShell 7 and run `pwsh -File ./deploy/Initialize-Docker.ps1` from the project root to generate private configuration, then use the same Docker Compose commands. `Invoke-RestMethod` is a PowerShell command; the health endpoint can also be opened in a browser.
 
 Initialization creates random database/admin passwords and a stable JWT key only if `.env.docker` does not exist. Existing credentials are preserved. Keep the current private configuration; do not regenerate or commit real credentials. The first build downloads images and Maven/npm dependencies.
 

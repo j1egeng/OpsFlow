@@ -49,7 +49,7 @@ OpsFlow 是一个面向软件运维协作的 Web 项目，覆盖软件服务目�
 部署请求链路：`浏览器（127.0.0.1:8088）→ Nginx → Spring Boot（容器内部 8080）→ PostgreSQL（容器内部 5432）`。
 
 ```text
-Architechitecting_Software_Solutions/
+OpsFlow/
   README.md                 中文项目说明
   README.en.md              English project guide
   compose.yaml              前端、后端、数据库容器编排
@@ -86,10 +86,11 @@ Architechitecting_Software_Solutions/
 
 ### 3.3 首次构建或在新电脑部署
 
-在项目根目录打开 PowerShell。当前电脑已完成部署，日常使用直接看第 4 节。
+以下命令使用 Windows PowerShell。首次下载需要 Git；首次部署请按顺序执行全部命令。已有部署的日常使用见第 4 节。
 
 ```powershell
-Set-Location 'E:\study flies\teamProject\Architechitecting_Software_Solutions'
+git clone https://github.com/j1egeng/OpsFlow.git
+cd OpsFlow
 docker version
 .\deploy\Initialize-Docker.ps1
 docker compose --env-file .env.docker -f compose.yaml config --quiet
@@ -98,7 +99,9 @@ docker compose --env-file .env.docker -f compose.yaml ps
 Invoke-RestMethod 'http://127.0.0.1:8088/actuator/health'
 ```
 
-其他电脑请调整项目路径。若 PATH 找不到 Docker，当前电脑可用绝对路径 `C:\Users\26514\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe` 调用。
+如果已经克隆仓库，直接进入自己电脑上的 `OpsFlow` 项目根目录，跳过 `git clone`。若 PATH 找不到 Docker，可使用自己电脑 Docker 安装目录中的 `docker.exe` 绝对路径调用。
+
+macOS/Linux 用户可安装 PowerShell 7，在项目根目录运行 `pwsh -File ./deploy/Initialize-Docker.ps1` 生成私有配置，然后执行相同的 Docker Compose 命令；上述 `Invoke-RestMethod` 为 PowerShell 命令，也可以在浏览器访问健康检查地址。
 
 初始化脚本只在 `.env.docker` 不存在时生成随机数据库密码、管理员密码和固定 JWT 密钥，已有文件不会被覆盖。请保留当前私有配置，不要重新生成或提交真实凭据。首次构建需联网下载镜像和 Maven/npm 依赖。
 

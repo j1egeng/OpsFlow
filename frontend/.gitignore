@@ -1,0 +1,13 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+acceptance-results/
+.env
+.env.*
+!.env.example
+*.local
+*.log
+*.tsbuildinfo
+.idea/
+.vscode/

@@ -1,0 +1,130 @@
+import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+
+async function login(page: Page, username = 'browseradmin') {
+  await page.goto('/login')
+  await page.locator('input[name="username"]').fill(username)
+  await page.locator('input[name="password"]').fill('BrowserTestPass123!')
+  await page.getByRole('button', { name: '登录工作台' }).click()
+  await expect(page).toHaveURL(username === 'browseradmin' ? /\/users$/ : /\/account$/)
+}
+
+test('login, session restoration, profile and logout use the real backend', async ({ page }) => {
+  await login(page)
+  await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible()
+  await expect(page.getByRole('table', { name: '用户列表' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('table', { name: '用户列表' })).toBeVisible()
+  await page.getByRole('link', { name: '我的账户', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '我的账户', exact: true })).toBeVisible()
+  await expect(page.getByText('browseradmin@example.test')).toBeVisible()
+  await page.getByRole('button', { name: '退出登录', exact: true }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByText('你已退出登录。')).toBeVisible()
+})
+
+test('incorrect credentials produce a visible backend error', async ({ page }) => {
+  await page.goto('/login')
+  await page.locator('input[name="username"]').fill('browseradmin')
+  await page.locator('input[name="password"]').fill('WrongPassword123!')
+  await page.getByRole('button', { name: '登录工作台' }).click()
+  await expect(page.getByRole('alert')).toContainText('用户名或密码错误')
+  await expect(page).toHaveURL(/\/login$/)
+})
+
+test('administrator can create, edit roles, disable and reenable a user', async ({ page }) => {
+  await login(page)
+  const username = `browser${Date.now()}`
+  await page.getByRole('button', { name: '新建用户', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.locator('input[name="displayName"]').fill('浏览器新成员')
+  await dialog.locator('input[name="username"]').fill(username)
+  await dialog.locator('input[name="email"]').fill(`${username}@example.test`)
+  await dialog.locator('input[name="password"]').fill('BrowserTestPass123!')
+  await dialog.getByRole('button', { name: '创建用户', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await page.getByLabel('每页用户数').selectOption('50')
+  await page.getByRole('textbox', { name: '搜索本页用户' }).fill(username)
+  await expect(page.getByRole('row').filter({ hasText: username })).toContainText('浏览器新成员')
+  await page.getByRole('button', { name: `编辑 ${username} 的角色` }).click()
+  await dialog.getByRole('checkbox', { name: '审批人', exact: true }).check()
+  await dialog.getByRole('button', { name: '保存角色', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByRole('row').filter({ hasText: username })).toContainText('审批人')
+  await page.getByRole('switch', { name: `启用状态：${username}` }).click()
+  await dialog.getByRole('button', { name: '确认停用', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByRole('switch', { name: `启用状态：${username}` })).not.toBeChecked()
+  await page.getByRole('switch', { name: `启用状态：${username}` }).click()
+  await dialog.getByRole('button', { name: '确认启用', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByRole('switch', { name: `启用状态：${username}` })).toBeChecked()
+})
+
+test('developer sees their profile and cannot enter user management', async ({ page }) => {
+  await login(page, 'developer')
+  await expect(page.getByRole('heading', { name: '我的账户', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: '用户管理', exact: true })).toHaveCount(0)
+  await page.goto('/users')
+  await expect(page).toHaveURL(/\/account$/)
+})
+
+test('last administrator protection is displayed without losing the session', async ({ page }) => {
+  await login(page)
+  await page.getByRole('switch', { name: '启用状态：browseradmin' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '确认停用' }).click()
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('至少需要保留一个启用的管理员账号')
+  await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
+  await expect(page.getByRole('table', { name: '用户列表' })).toBeVisible()
+})
+
+test('pagination and empty search states work', async ({ page }) => {
+  await login(page)
+  await page.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(page.getByText('第 2 / 2 页')).toBeVisible()
+  await page.getByRole('textbox', { name: '搜索本页用户' }).fill('no-such-team-member')
+  await expect(page.getByRole('heading', { name: '没有找到匹配的成员' })).toBeVisible()
+  await page.getByRole('button', { name: '清除搜索' }).click()
+  await expect(page.getByRole('heading', { name: '没有找到匹配的成员' })).toHaveCount(0)
+})
+
+test('invalid saved token redirects back to login', async ({ page }) => {
+  await page.goto('/login')
+  await page.evaluate(() => sessionStorage.setItem('opsflow.session.v1', JSON.stringify({ token: 'invalid-token', expiresAt: Date.now() + 3600000 })))
+  await page.goto('/users')
+  await expect(page).toHaveURL(/\/login$/)
+  await expect(page.getByText('登录已过期或账号状态已变更，请重新登录。')).toBeVisible()
+})
+
+test('mobile layout has no page overflow and navigation works', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await login(page)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.getByRole('button', { name: '打开导航', exact: true }).click()
+  await page.getByRole('link', { name: '我的账户', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '我的账户', exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
+test('desktop and mobile screenshots and console validation', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.goto('/login')
+  await expect(page.getByText('服务已连接')).toBeVisible()
+  await page.screenshot({ path: 'test-results/login-desktop.png', fullPage: true, animations: 'disabled' })
+  await login(page)
+  await expect(page.getByRole('table', { name: '用户列表' })).toBeVisible()
+  await page.screenshot({ path: 'test-results/users-desktop.png', fullPage: true, animations: 'disabled' })
+  await page.getByRole('link', { name: '我的账户', exact: true }).click()
+  await page.screenshot({ path: 'test-results/account-desktop.png', fullPage: true, animations: 'disabled' })
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('link', { name: /用户管理/ }).click()
+  await expect(page.getByRole('table', { name: '用户列表' })).toBeVisible()
+  await page.getByRole('button', { name: '新建用户', exact: true }).click()
+  await page.screenshot({ path: 'test-results/create-user-desktop.png', fullPage: true, animations: 'disabled' })
+  await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => { window.scrollTo(0, 0); document.querySelector('.table-scroll')?.scrollTo(0, 0) })
+  await page.screenshot({ path: 'test-results/users-mobile.png', fullPage: true, animations: 'disabled' })
+  expect(errors).toEqual([])
+})

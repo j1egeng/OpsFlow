@@ -1,0 +1,27 @@
+# Local Docker credentials; never commit generated passwords or signing keys.
+.env.docker
+.env
+.env.local
+
+# Local development configuration and IDE/tooling state.
+.codex_work/
+.idea/
+.vscode/
+*.log
+*.tsbuildinfo
+Thumbs.db
+.DS_Store
+
+# Course and assignment materials; the repository contains the application only.
+/Sample Project Proposal - *.docx
+/SWE5006 - *.docx
+/SWE5006-*.pptx
+
+# Build output, dependencies and local test artifacts.
+backend/target/
+frontend/node_modules/
+frontend/dist/
+deploy/results/
+frontend/acceptance-results/
+frontend/playwright-report/
+frontend/test-results/

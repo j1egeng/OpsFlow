@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.git/
+.idea/
+.vscode/
+playwright-report/
+test-results/
+acceptance-results/
+.env
+.env.*
+*.log
+*.tsbuildinfo

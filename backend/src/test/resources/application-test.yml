@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:opsflow-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+app:
+  security:
+    bcrypt-strength: 4
+    jwt:
+      secret-base64: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      require-persistent-key: true
+  bootstrap:
+    admin:
+      enabled: false

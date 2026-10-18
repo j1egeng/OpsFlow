@@ -1,0 +1,8 @@
+target/
+.git/
+.idea/
+.vscode/
+*.log
+**/.env
+**/.env.*
+src/main/resources/application-local.*

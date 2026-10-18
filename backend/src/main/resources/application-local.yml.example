@@ -1,0 +1,6 @@
+# Copy to application-local.yml, fill in credentials, then use the local profile.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/opsflow
+    username: your_postgres_user
+    password: "your_postgres_password"

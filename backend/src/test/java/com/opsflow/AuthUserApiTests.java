@@ -88,6 +88,20 @@ class AuthUserApiTests {
     }
 
     @Test
+    void locksLoginAfterRepeatedFailuresEvenWithTheCorrectPassword() {
+        // A dedicated account keeps the in-memory lockout from affecting other tests in the shared context.
+        String username = "lockout" + UUID.randomUUID().toString().substring(0, 8);
+        assertThat(create(username, List.of("DEVELOPER")).getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThat(login(username, "WrongPassword123!").getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+        ResponseEntity<JsonNode> locked = login(username, PASSWORD);
+        assertThat(locked.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(locked.getBody().get("code").asText()).isEqualTo("TOO_MANY_LOGIN_ATTEMPTS");
+        assertThat(locked.getBody().toString()).doesNotContain("accessToken");
+    }
+
+    @Test
     void rejectsUnauthenticatedProtectedRequests() {
         assertThat(request(HttpMethod.GET, "/api/v1/auth/me", null, null).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         ResponseEntity<JsonNode> response = request(HttpMethod.GET, "/api/v1/users", null, null);

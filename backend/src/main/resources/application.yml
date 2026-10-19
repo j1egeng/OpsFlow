@@ -48,6 +48,9 @@ app:
       ttl: ${JWT_TTL:1h}
       secret-base64: ${JWT_SECRET_BASE64:}
       require-persistent-key: ${JWT_REQUIRE_PERSISTENT_KEY:false}
+    login:
+      max-failures: ${LOGIN_MAX_FAILURES:5}
+      lockout: ${LOGIN_LOCKOUT:15m}
   bootstrap:
     admin:
       enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}

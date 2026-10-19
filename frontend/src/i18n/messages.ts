@@ -88,6 +88,7 @@ export const english: Record<string, string> = {
   '已解决或关闭的事件不能追加备注': 'Notes cannot be added to resolved or closed incidents.',
   '。': '.',
   '用户名或密码错误，或账号已停用': 'Incorrect username or password, or the account is disabled.',
+  '登录失败次数过多，请稍后再试': 'Too many failed sign-in attempts. Please try again later.',
   '密码至少 12 个字符，且 UTF-8 编码后不能超过 72 字节': 'The password needs at least 12 characters and must not exceed 72 UTF-8 bytes.',
   '正在恢复工作台': 'Restoring your workspace', '正在加载': 'Loading',
   '已启用': 'Enabled', '已停用': 'Disabled', '关闭对话框': 'Close dialog', '关闭提示': 'Dismiss notification',

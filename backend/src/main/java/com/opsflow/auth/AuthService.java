@@ -30,28 +30,36 @@ public class AuthService {
     private final JwtEncoder encoder;
     private final JwtProperties properties;
     private final AuditService audit;
+    private final LoginAttemptLimiter limiter;
     private final String dummyHash;
 
     public AuthService(UserRepository users, PasswordEncoder passwords, JwtEncoder encoder,
-                       JwtProperties properties, AuditService audit) {
+                       JwtProperties properties, AuditService audit, LoginAttemptLimiter limiter) {
         this.users = users;
         this.passwords = passwords;
         this.encoder = encoder;
         this.properties = properties;
         this.audit = audit;
+        this.limiter = limiter;
         this.dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        if (limiter.isLocked(request.username())) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_LOGIN_ATTEMPTS", "登录失败次数过多，请稍后再试");
+        }
         if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+            limiter.recordFailure(request.username());
             throw invalidCredentials();
         }
         UserAccount user = users.findByUsernameIgnoreCase(request.username().trim()).orElse(null);
         boolean matched = passwords.matches(request.password(), user == null ? dummyHash : user.getPasswordHash());
         if (!matched || user == null || !user.isEnabled()) {
+            limiter.recordFailure(request.username());
             throw invalidCredentials();
         }
+        limiter.recordSuccess(request.username());
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder().issuer(properties.issuer())
                 .audience(List.of(properties.audience())).subject(user.getId().toString())

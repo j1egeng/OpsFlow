@@ -101,7 +101,7 @@ Invoke-RestMethod 'http://127.0.0.1:8088/actuator/health'
 
 If the repository is already cloned, enter its `OpsFlow` root directory on your computer and skip `git clone`. If Docker is absent from PATH, invoke `docker.exe` from your own Docker installation directory by its absolute path.
 
-On macOS/Linux, you can install PowerShell 7 and run `pwsh -File ./deploy/Initialize-Docker.ps1` from the project root to generate private configuration, then use the same Docker Compose commands. `Invoke-RestMethod` is a PowerShell command; the health endpoint can also be opened in a browser.
+On macOS/Linux, run `sh ./deploy/init-docker.sh` from the project root to generate private configuration (options: `--admin-username`, `--admin-email`, `--http-port`), then use the same Docker Compose commands. `Invoke-RestMethod` is a PowerShell command; the health endpoint can also be opened in a browser or checked with `curl http://127.0.0.1:8088/actuator/health`.
 
 Initialization creates random database/admin passwords and a stable JWT key only if `.env.docker` does not exist. Existing credentials are preserved. Keep the current private configuration; do not regenerate or commit real credentials. The first build downloads images and Maven/npm dependencies.
 

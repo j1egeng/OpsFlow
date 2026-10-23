@@ -12,7 +12,9 @@ CI 的 `delivery` job 在前后端及部署安全检查通过后构建镜像并�
 
 ### 启用
 
-需要 PowerShell 7.2+ (`pwsh`)、Git、可用的 Docker Linux 引擎、Docker Compose 2.24.4+。先按 [Docker 部署文档](README.md) 完成一次常规初始化，确认已有三个容器运行、管理员可登录。**保留原来的 `.env.docker`，不要重新生成。**
+需要 PowerShell 7.2+ (`pwsh`)、Git、`tar`（Windows 自带 tar.exe）、可用的 Docker Linux 引擎、Docker Compose 2.24.4+。先按 [Docker 部署文档](README.md) 完成一次常规初始化，确认已有三个容器运行、管理员可登录。**保留原来的 `.env.docker`，不要重新生成。**
+
+镜像导入时会重新导出并核对原始配置 blob 的 SHA-256。该配置包含运行设置及按顺序排列的文件系统层摘要。不同引擎的 image ID 可能分别指向 config、manifest 或 index，不能直接跨引擎比较；CI 镜像 ID 保留为来源记录，本机容器则核对本机已验证镜像 ID，回退仍使用上一版本机的确切 ID。
 
 脚本需要 GitHub Actions artifact 的读取权限。默认在内存中使用 Git credential helper 已保存的 GitHub 登录。也可在当前进程环境中提供 `OPSFLOW_GITHUB_TOKEN`，使用仅限该仓库 `Actions: read` 和 `Contents: read` 的 fine-grained token。不要将 token 放进 `.env.docker`、命令参数、文档或截图；不要把 token 提交到 Git。
 
@@ -79,7 +81,9 @@ The pipeline is: reviewed main push → backend/frontend CI → build commit-tag
 
 GitHub-hosted runners build and validate; your computer is the persistent deployment target. No inbound access, self-hosted runner, public registry, or uploaded application credentials are required. The agent downloads the exact tested images and checks main SHA, trusted successful push CI, artifact and file hashes, image IDs and revision labels. Fork PRs never produce deployable bundles.
 
-Requirements: PowerShell 7.2+, Git, Docker Linux engine, Compose 2.24.4+, and an existing healthy manual deployment with its original private `.env.docker`. Configure a local Git credential helper or a process-only `OPSFLOW_GITHUB_TOKEN` with repository `Actions: read` and `Contents: read`; never commit or display tokens. PRs run container acceptance and rollback tests but never upload deployable artifacts.
+Requirements: PowerShell 7.2+, Git, `tar` (included with Windows), Docker Linux engine, Compose 2.24.4+, and an existing healthy manual deployment with its original private `.env.docker`. Configure a local Git credential helper or a process-only `OPSFLOW_GITHUB_TOKEN` with repository `Actions: read` and `Contents: read`; never commit or display tokens. PRs run container acceptance and rollback tests but never upload deployable artifacts.
+
+Imported images are re-exported and verified against the exact original config-blob SHA-256, including runtime configuration and ordered filesystem layer digests. Engine IDs may identify configs, manifests or indexes, so the CI ID is retained as provenance while deployed containers are compared to verified local IDs. Rollback still restores exact previous local IDs.
 
 Run `pwsh -NoProfile -File ./deploy/Start-CD.ps1 -Once -CheckOnly` to inspect readiness, then `pwsh -NoProfile -File ./deploy/Start-CD.ps1` to watch. The process polls every 60 seconds. Keep the terminal, computer and Docker running; Ctrl+C stops the agent. It does not install a startup service. Old CI runs without release artifacts are ignored. Merge the new workflow first; artifacts expire after seven days and require a CI rerun.
 

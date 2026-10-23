@@ -8,7 +8,7 @@ foreach ($file in @('images.tar', 'compose.yaml')) {
     [IO.File]::WriteAllText((Join-Path $scratch $file), 'fixture')
     $manifest.files[$file] = (Get-FileHash (Join-Path $scratch $file) -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-foreach ($service in @('backend', 'frontend')) { $manifest.images[$service] = @{ tag = "opsflow-${service}:$sha"; id = 'sha256:' + ('b' * 64) } }
+foreach ($service in @('backend', 'frontend')) { $manifest.images[$service] = @{ tag = "opsflow-${service}:$sha"; id = 'sha256:' + ('b' * 64); configDigest = 'sha256:' + ('c' * 64) } }
 $path = Join-Path $scratch 'release.json'
 Write-CDJson $path $manifest
 $null = Read-CDManifest $scratch
@@ -21,13 +21,14 @@ foreach ($file in @('images.tar', 'compose.yaml')) {
     [IO.File]::WriteAllText((Join-Path $scratch $file), 'fixture')
     $cases++
 }
-foreach ($case in @('schema', 'revision', 'tag', 'id')) {
+foreach ($case in @('schema', 'revision', 'tag', 'id', 'configDigest')) {
     $copy = $manifest | ConvertTo-Json -Depth 10 | ConvertFrom-Json
     switch ($case) {
         schema { $copy.schema = 2 }
         revision { $copy.revision = '../../unsafe' }
         tag { $copy.images.frontend.tag = 'untrusted/frontend:latest' }
         id { $copy.images.backend.id = 'latest' }
+        configDigest { $copy.images.backend.configDigest = 'latest' }
     }
     Write-CDJson $path $copy
     $blocked = $false
@@ -36,3 +37,16 @@ foreach ($case in @('schema', 'revision', 'tag', 'id')) {
     $cases++
 }
 Write-Output "$cases deployment bundle integrity cases passed."
+$expectedImage = [pscustomobject]@{ id = 'sha256:' + ('a' * 64); configDigest = 'sha256:' + ('c' * 64) }
+$actualImage = [pscustomobject]@{ Id = 'sha256:' + ('b' * 64); Config = @{ Labels = @{ 'org.opencontainers.image.revision' = $sha } } }
+# Classic and containerd IDs differ; the identical original config blob must still be accepted.
+if ((Assert-CDLoadedImage $expectedImage $actualImage $expectedImage.configDigest $sha) -cne $actualImage.Id) { throw 'Cross-engine image identity regression.' }
+foreach ($case in @(
+    @{ digest = 'sha256:' + ('d' * 64); revision = $sha },
+    @{ digest = $expectedImage.configDigest; revision = 'f' * 40 }
+)) {
+    $blocked = $false
+    try { $null = Assert-CDLoadedImage $expectedImage $actualImage $case.digest $case.revision } catch { $blocked = $true }
+    if (-not $blocked) { throw 'An altered image config or revision was accepted.' }
+}
+Write-Output '3 imported image identity cases passed.'

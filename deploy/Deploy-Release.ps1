@@ -37,11 +37,11 @@ try {
     # Verify the old version before replacing it. Its image IDs remain available for rollback.
     $null = Test-CDSmoke $EnvironmentFile
     Invoke-CDNative docker @('image', 'load', '--input', (Join-Path $BundleDirectory 'images.tar')) | Out-Host
+    $configs = Get-CDLocalConfigDigests @($release.images.backend.tag, $release.images.frontend.tag) $StateDirectory
+    $localImages = @{}
     foreach ($service in @('backend', 'frontend')) {
         $image = Get-CDImage $release.images.$service.tag
-        if ($image.Id -cne $release.images.$service.id -or $image.Config.Labels.'org.opencontainers.image.revision' -cne $release.revision) {
-            throw 'Loaded image ID or revision mismatch.'
-        }
+        $localImages[$service] = Assert-CDLoadedImage $release.images.$service $image $configs[$release.images.$service.tag] $release.revision
     }
     $attempt = Join-Path $StateDirectory ([DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff') + '-' + $release.revision.Substring(0, 8))
     New-Item -ItemType Directory -Path $attempt | Out-Null
@@ -70,12 +70,12 @@ try {
         if ($newDb.Id -cne $db[0].Id) { throw 'Database container unexpectedly changed.' }
         foreach ($service in @('backend', 'frontend')) {
             $actual = @($after | Where-Object { $_.Config.Labels.'com.docker.compose.service' -eq $service })[0]
-            if ($actual.Image -cne $release.images.$service.id -or $actual.State.Health.Status -cne 'healthy') { throw 'Container identity/health mismatch.' }
+            if ($actual.Image -cne $localImages[$service] -or $actual.State.Health.Status -cne 'healthy') { throw 'Container identity/health mismatch.' }
         }
         if ((Get-FileHash -LiteralPath $EnvironmentFile -Algorithm SHA256).Hash -cne $environmentHash) { throw 'Private environment file changed.' }
         $state = @{ project = $ProjectName; revision = $release.revision; deployedAt = [DateTime]::UtcNow.ToString('o')
             environmentFile = $EnvironmentFile; composeFile = $newCompose; overrideFile = $newOverride
-            migrations = $release.migrations; checks = $checks; images = $release.images; databaseContainer = $db[0].Id }
+            migrations = $release.migrations; checks = $checks; images = $release.images; localImageIds = $localImages; databaseContainer = $db[0].Id }
         Write-CDJson (Join-Path $attempt 'result.json') (@{ status = 'deployed'; revision = $release.revision; checks = $checks })
         Write-CDJson $stateFile $state
         Write-Output "Deployed $($release.revision) to $($checks.url). Database container and credentials preserved."

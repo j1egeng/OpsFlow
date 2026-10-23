@@ -85,7 +85,7 @@ function Invoke-CDPoll {
     try {
         if (-not $response.IsSuccessStatusCode) { throw "Artifact download failed (HTTP $([int]$response.StatusCode))." }
         $stream = [IO.File]::Create($zipFile)
-        try { $response.Content.CopyToAsync($stream).GetAwaiter().GetResult() } finally { $stream.Dispose() }
+        try { $null = $response.Content.CopyToAsync($stream).GetAwaiter().GetResult() } finally { $stream.Dispose() }
     } finally { $response.Dispose() }
     if ((Get-FileHash $zipFile -Algorithm SHA256).Hash.ToLowerInvariant() -cne $artifact.digest.Substring(7)) { throw 'Downloaded artifact checksum mismatch.' }
     $zip = [IO.Compression.ZipFile]::OpenRead($zipFile)

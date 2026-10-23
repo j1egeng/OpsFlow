@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   pull_request:
   push:
@@ -53,3 +56,55 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  deployment-checks:
+    name: Deployment safety checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - shell: pwsh
+        run: |
+          ./deploy/tests/Test-CDGates.ps1
+          ./deploy/tests/Test-CDBundle.ps1
+          Get-ChildItem deploy -Filter '*.ps1' -Recurse | ForEach-Object {
+            $tokens = $null; $errorsFound = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errorsFound)
+            if ($errorsFound) { throw ($errorsFound | Out-String) }
+          }
+
+  delivery:
+    name: Build and validate deployment bundle
+    needs: [backend, frontend, deployment-checks]
+    # PRs validate the entire release path in a disposable runner, without publishing a bundle.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Build versioned images and bundle
+        shell: pwsh
+        run: ./deploy/Build-Release.ps1 -Revision $env:GITHUB_SHA -OutputDirectory "$env:RUNNER_TEMP/opsflow-release"
+      - name: Validate release with an isolated database
+        shell: pwsh
+        run: ./deploy/Test-Release.ps1 -BundleDirectory "$env:RUNNER_TEMP/opsflow-release"
+      - name: Exercise local deployment and rollback with a disposable database
+        shell: pwsh
+        run: ./deploy/tests/Test-CDDeployment.ps1 -BundleDirectory "$env:RUNNER_TEMP/opsflow-release"
+      - uses: actions/upload-artifact@v6
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: opsflow-release-${{ github.sha }}
+          path: ${{ runner.temp }}/opsflow-release/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+      - name: Explain delivery handoff
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          echo '### Deployment bundle ready' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The local CD agent downloads these tested images after this entire workflow succeeds.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Artifact readiness alone does not mean the local computer has deployed the release.' >> "$GITHUB_STEP_SUMMARY"

@@ -6,7 +6,7 @@
 
 2026-10-18 已实际构建前后端镜像并启动三个容器，三个容器均通过健康检查。前端 8088、API 反向代理、管理员网页登录、审计日志列表与详情、中英文切换及 7 个主要页面直接访问和刷新均通过。私有 `.env.docker` 和原 Windows PostgreSQL 开发数据库保留。
 
-本机证据保存在不提交 Git 的 `deploy/results/`。这是该次验收结果，当前状态以 `compose ps` 和健康检查为准；当前电脑日常使用直接执行下文“再次启动”，无需重新初始化凭据或重新构建。GitHub Actions 尚未配置。
+本机证据保存在不提交 Git 的 `deploy/results/`。这是该次验收结果，当前状态以 `compose ps` 和健康检查为准；当前电脑日常使用直接执行下文“再次启动”，无需重新初始化凭据或重新构建。GitHub Actions 已配置 CI；镜像交付和本机持续部署的使用及验证边界见 [CD 指南](CD.md)。
 
 ### 运行前提与隔离范围
 
@@ -95,7 +95,7 @@ docker compose --env-file .env.docker -f compose.yaml up -d --build --wait --wai
 
 On 2026-10-18, frontend/backend images were built and all three containers became healthy. Port 8088, API proxying, administrator browser login, audit list/detail, language switching, and direct navigation/refresh on seven main pages passed. Private `.env.docker` and the original Windows development database were preserved.
 
-Local evidence is saved under the Git-ignored `deploy/results/` directory. These are results of that run; use `compose ps` and health checks for current status. On this computer, use the startup commands below without regenerating credentials or rebuilding for everyday operation. GitHub Actions is not configured.
+Local evidence is saved under the Git-ignored `deploy/results/` directory. These are results of that run; use `compose ps` and health checks for current status. On this computer, use the startup commands below without regenerating credentials or rebuilding for everyday operation. GitHub Actions CI is configured; see the [CD guide](CD.md) for image delivery, local continuous deployment, and verification boundaries.
 
 ### Prerequisites and isolation
 

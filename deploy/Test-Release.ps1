@@ -43,5 +43,5 @@ try {
 } finally {
     # This project has only a disposable tmpfs database. Never remove any volume.
     Invoke-CDNative docker ($compose + @('down', '--timeout', '20')) | Out-Host
-    if (Test-Path -LiteralPath $privateFile) { Remove-Item -LiteralPath $privateFile }
+    if (Test-Path -LiteralPath $privateFile) { Remove-Item -LiteralPath $privateFile -Force }
 }

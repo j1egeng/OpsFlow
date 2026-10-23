@@ -80,13 +80,13 @@ function Test-CDSmoke {
     $config = Read-CDEnvironment $EnvironmentFile
     $port = if ($config.ContainsKey('OPSFLOW_HTTP_PORT')) { [int]$config.OPSFLOW_HTTP_PORT } else { 8088 }
     $base = "http://127.0.0.1:$port"
-    $home = Invoke-WebRequest "$base/" -TimeoutSec 20
-    if ($home.StatusCode -ne 200 -or $home.Content -notmatch '<div id="root">') { throw 'Frontend smoke check failed.' }
+    $homeResponse = Invoke-WebRequest "$base/" -TimeoutSec 20
+    if ($homeResponse.StatusCode -ne 200 -or $homeResponse.Content -notmatch '<div id="root">') { throw 'Frontend smoke check failed.' }
     $health = Invoke-RestMethod "$base/actuator/health" -TimeoutSec 20
     if ($health.status -cne 'UP') { throw 'Backend/database health failed.' }
     foreach ($route in @('/login', '/dashboard', '/services', '/incidents', '/changes', '/users', '/account', '/audit-logs')) {
         $page = Invoke-WebRequest "$base$route" -TimeoutSec 20
-        if ($page.StatusCode -ne 200 -or $page.Content -cne $home.Content) { throw "SPA refresh failed: $route" }
+        if ($page.StatusCode -ne 200 -or $page.Content -cne $homeResponse.Content) { throw "SPA refresh failed: $route" }
     }
     if ($ExpectedRevision) {
         $version = Invoke-RestMethod "$base/release.json" -TimeoutSec 20

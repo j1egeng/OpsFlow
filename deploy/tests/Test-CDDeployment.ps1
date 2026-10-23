@@ -84,5 +84,5 @@ try {
     Write-Output 'Real Docker deployment, failed-release rollback and persistence tests passed.'
 } finally {
     Invoke-CDNative docker ($compose + @('down', '--timeout', '20')) | Out-Host
-    if (Test-Path -LiteralPath $privateFile) { Remove-Item -LiteralPath $privateFile }
+    if (Test-Path -LiteralPath $privateFile) { Remove-Item -LiteralPath $privateFile -Force }
 }

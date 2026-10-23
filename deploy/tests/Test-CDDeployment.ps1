@@ -59,6 +59,8 @@ try {
     }
     Copy-Item (Join-Path $BundleDirectory 'compose.yaml') (Join-Path $badBundle 'compose.yaml')
     Invoke-CDNative docker @('image', 'save', '-o', (Join-Path $badBundle 'images.tar'), $bad.images.backend.tag, $bad.images.frontend.tag) | Out-Host
+    $badConfigs = Get-CDArchiveConfigs (Join-Path $badBundle 'images.tar')
+    foreach ($service in @('backend', 'frontend')) { $bad.images.$service.configDigest = $badConfigs[$bad.images.$service.tag] }
     foreach ($file in @('images.tar', 'compose.yaml')) { $bad.files.$file = (Get-FileHash (Join-Path $badBundle $file) -Algorithm SHA256).Hash.ToLowerInvariant() }
     Write-CDJson (Join-Path $badBundle 'release.json') $bad
     Write-CDJson (Join-Path $badBundle 'verification.json') @{ revision = $badRevision; passed = $true }
@@ -72,7 +74,7 @@ try {
     $null = Test-CDSmoke $privateFile $release.revision
     foreach ($service in @('backend', 'frontend')) {
         $container = @((Get-CDContainers $project) | Where-Object { $_.Config.Labels.'com.docker.compose.service' -eq $service })[0]
-        if ($container.Image -cne $release.images.$service.id) { throw 'Exact previous image ID was not restored.' }
+        if ($container.Image -cne (Get-CDImage $release.images.$service.tag).Id) { throw 'Exact previous image ID was not restored.' }
     }
     $afterDb = @((Get-CDContainers $project) | Where-Object { $_.Config.Labels.'com.docker.compose.service' -eq 'db' })[0]
     if ($afterDb.Id -cne $db.Id) { throw 'CD replaced the database container.' }

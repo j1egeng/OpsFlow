@@ -31,7 +31,8 @@ function Read-CDManifest([string]$BundleDirectory) {
     }
     foreach ($service in @('backend', 'frontend')) {
         $image = $manifest.images.$service
-        if ($image.tag -cne "opsflow-${service}:$($manifest.revision)" -or $image.id -cnotmatch '^sha256:[a-f0-9]{64}$') {
+        if ($image.tag -cne "opsflow-${service}:$($manifest.revision)" -or $image.id -cnotmatch '^sha256:[a-f0-9]{64}$' -or
+            $image.configDigest -cnotmatch '^sha256:[a-f0-9]{64}$') {
             throw 'Unexpected release image identity.'
         }
     }
@@ -45,6 +46,46 @@ function Read-CDManifest([string]$BundleDirectory) {
 function Get-CDImage([string]$Image) {
     $value = Invoke-CDNative docker @('image', 'inspect', $Image)
     return @($value | ConvertFrom-Json)[0]
+}
+
+function Get-CDArchiveConfigs([string]$Archive) {
+    # Engine IDs may describe a config, manifest or index. The exact config blob is portable.
+    # Docker save includes a compatibility manifest even with the containerd image store.
+    $entries = @( (Invoke-CDNative tar @('-xOf', $Archive, 'manifest.json') | ConvertFrom-Json) )
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('opsflow-image-config-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $scratch | Out-Null
+    $configs = @{}
+    foreach ($entry in $entries) {
+        $configName = $entry.Config
+        if ($configName -cnotmatch '^([a-f0-9]{64}\.json|blobs/sha256/[a-f0-9]{64})$') { throw 'Unexpected image config path.' }
+        Invoke-CDNative tar @('-xf', $Archive, '-C', $scratch, '--', $configName) | Out-Null
+        $configPath = Join-Path $scratch $configName
+        $digest = 'sha256:' + (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        foreach ($tag in $entry.RepoTags) {
+            if ($configs.ContainsKey($tag)) { throw 'Duplicate image tag in archive.' }
+            $configs[$tag] = $digest
+        }
+    }
+    return $configs
+}
+
+function Get-CDLocalConfigDigests([string[]]$Images, [string]$Directory) {
+    $archive = Join-Path $Directory ('loaded-images-' + [Guid]::NewGuid().ToString('N') + '.tar')
+    try {
+        Invoke-CDNative docker (@('image', 'save', '--output', $archive) + $Images) | Out-Host
+        return Get-CDArchiveConfigs $archive
+    } finally {
+        # Only this freshly created archive is removed; no Docker image or volume is deleted.
+        if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+    }
+}
+
+function Assert-CDLoadedImage($Expected, $Actual, [string]$ConfigDigest, [string]$Revision) {
+    if ($ConfigDigest -cne $Expected.configDigest -or
+        $Actual.Config.Labels.'org.opencontainers.image.revision' -cne $Revision) {
+        throw 'Loaded image config digest or revision mismatch.'
+    }
+    return $Actual.Id
 }
 
 function Get-CDContainers([string]$ProjectName) {

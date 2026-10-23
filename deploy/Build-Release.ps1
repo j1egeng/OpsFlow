@@ -19,6 +19,8 @@ foreach ($service in @('backend', 'frontend')) {
     $images[$service] = @{ tag = $tag; id = (Get-CDImage $tag).Id }
 }
 Invoke-CDNative docker @('image', 'save', '--output', (Join-Path $OutputDirectory 'images.tar'), $images.backend.tag, $images.frontend.tag) | Out-Host
+$configs = Get-CDArchiveConfigs (Join-Path $OutputDirectory 'images.tar')
+foreach ($service in @('backend', 'frontend')) { $images[$service].configDigest = $configs[$images[$service].tag] }
 Copy-Item -LiteralPath (Join-Path $root 'compose.yaml') -Destination (Join-Path $OutputDirectory 'compose.yaml')
 $files = @{}
 foreach ($file in @('images.tar', 'compose.yaml')) {

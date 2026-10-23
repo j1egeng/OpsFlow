@@ -28,8 +28,9 @@ $key = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::
 [IO.File]::WriteAllText($privateFile, "OPSFLOW_DB_PASSWORD=$password`nJWT_SECRET_BASE64=$key`nBOOTSTRAP_ADMIN_ENABLED=true`nBOOTSTRAP_ADMIN_USERNAME=releaseadmin`nBOOTSTRAP_ADMIN_EMAIL=release@example.test`nBOOTSTRAP_ADMIN_PASSWORD=$password`n")
 $compose = @('compose', '--project-name', $project, '--env-file', $privateFile, '-f', (Join-Path $BundleDirectory 'compose.yaml'), '-f', $override)
 try {
+    $localConfigs = Get-CDLocalConfigDigests @($release.images.backend.tag, $release.images.frontend.tag) $scratch
     foreach ($service in @('backend', 'frontend')) {
-        if ((Get-CDImage $release.images.$service.tag).Id -cne $release.images.$service.id) { throw 'Image identity mismatch.' }
+        $null = Assert-CDLoadedImage $release.images.$service (Get-CDImage $release.images.$service.tag) $localConfigs[$release.images.$service.tag] $release.revision
     }
     Invoke-CDNative docker ($compose + @('up', '-d', '--no-build', '--wait', '--wait-timeout', '240')) | Out-Host
     $binding = (Invoke-CDNative docker ($compose + @('port', 'frontend', '80'))).Trim()

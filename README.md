@@ -74,7 +74,7 @@ OpsFlow/
 
 2026-10-18 已实际构建前后端镜像并启动容器：Docker Client 和 Linux Server 均正常，三个容器均健康；前端访问、API 反向代理、管理员网页登录、审计日志列表与详情、中英文切换及 7 个主要页面直接访问和刷新均通过，未检测到浏览器 JavaScript 运行时错误。
 
-这是该次验收结果，不代表之后任何时刻的实时状态。本机证据保存在不提交 Git 的 `deploy/results/`，包括 `DEPLOYMENT-2026-10-18.md`、`docker-runtime.json`、`docker-verification.json` 和中英文截图。Docker 曾发生 Windows Secrets Engine socket 启动故障，后续恢复可用；恢复原因及再次重启后的可靠性尚未确认。GitHub Actions 尚未配置。
+这是该次验收结果，不代表之后任何时刻的实时状态。本机证据保存在不提交 Git 的 `deploy/results/`，包括 `DEPLOYMENT-2026-10-18.md`、`docker-runtime.json`、`docker-verification.json` 和中英文截图。Docker 曾发生 Windows Secrets Engine socket 启动故障，后续恢复可用；恢复原因及再次重启后的可靠性尚未确认。GitHub Actions 已配置前后端 CI；新增的镜像交付与本机 CD 流程见 [持续部署指南](deploy/CD.md)。是否已部署以实际 CI 与本机验收结果为准。
 
 ### 3.2 环境与隔离
 

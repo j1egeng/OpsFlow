@@ -74,7 +74,7 @@ OpsFlow now runs locally through Docker Compose with three containers: Nginx ser
 
 On 2026-10-18, frontend/backend images were built and containers started. Docker Client and Linux Server were available and all three containers were healthy. Frontend access, API proxying, administrator browser login, audit list/detail, Chinese/English switching, and direct navigation/refresh on seven main pages passed. No JavaScript runtime errors were detected.
 
-These are results of that acceptance run, not a live status report. Local evidence is saved under the Git-ignored `deploy/results/` directory: `DEPLOYMENT-2026-10-18.md`, `docker-runtime.json`, `docker-verification.json`, and bilingual screenshots. Docker previously encountered a Windows Secrets Engine socket startup failure and later became available; its recovery cause and reliability across another restart were not established. GitHub Actions is not configured.
+These are results of that acceptance run, not a live status report. Local evidence is saved under the Git-ignored `deploy/results/` directory: `DEPLOYMENT-2026-10-18.md`, `docker-runtime.json`, `docker-verification.json`, and bilingual screenshots. Docker previously encountered a Windows Secrets Engine socket startup failure and later became available; its recovery cause and reliability across another restart were not established. GitHub Actions runs backend/frontend CI. The image-delivery and local CD setup is described in the [continuous deployment guide](deploy/CD.md); actual deployment requires successful workflow and local checks.
 
 ### 3.2 Requirements and isolation
 
